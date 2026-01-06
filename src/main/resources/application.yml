@@ -1,0 +1,257 @@
+# ============================================================================
+# MEDIA APPLICATION - UNIFIED CONFIGURATION
+# ============================================================================
+# Single configuration file - uses environment variables from .env file
+# All environment-specific settings are configured via environment variables
+# ============================================================================
+
+# ============================================================================
+# SERVER CONFIGURATION
+# ============================================================================
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+    include-exception: false
+
+# ============================================================================
+# SPRING CONFIGURATION
+# ============================================================================
+spring:
+  application:
+    name: media-app-backend
+
+  # ============================================================================
+  # DATABASE CONFIGURATION (PostgreSQL)
+  # ============================================================================
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:media_app_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    
+    # HikariCP Connection Pool
+    hikari:
+      pool-name: MediaAppHikariPool
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: 30000  # 30 seconds
+      idle-timeout: 600000       # 10 minutes
+      max-lifetime: 1800000      # 30 minutes
+      auto-commit: true
+      connection-test-query: SELECT 1
+      leak-detection-threshold: 60000  # 60 seconds
+      
+  # ============================================================================
+  # JPA / HIBERNATE CONFIGURATION
+  # ============================================================================
+  jpa:
+    database: POSTGRESQL
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: ${JPA_SHOW_SQL:false}
+    open-in-view: false
+    
+    hibernate:
+      ddl-auto: ${HIBERNATE_DDL_AUTO:validate}  # validate, update, create, create-drop
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl
+    
+    properties:
+      hibernate:
+        # Performance
+        jdbc:
+          batch_size: 50
+          fetch_size: 50
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+        
+        # Query optimization
+        query:
+          in_clause_parameter_padding: true
+          fail_on_pagination_over_collection_fetch: true
+          plan_cache_max_size: 2048
+        
+        # Logging
+        format_sql: ${HIBERNATE_FORMAT_SQL:true}
+        use_sql_comments: ${HIBERNATE_USE_SQL_COMMENTS:false}
+        
+        # Cache (second-level cache disabled by default)
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+
+  # ============================================================================
+  # FLYWAY MIGRATION
+  # ============================================================================
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    sql-migration-prefix: V
+    sql-migration-separator: __
+    sql-migration-suffixes: .sql
+    validate-on-migrate: true
+    clean-disabled: ${FLYWAY_CLEAN_DISABLED:true}
+    out-of-order: false
+    placeholder-replacement: true
+    placeholders:
+      app_name: media_app
+
+  # ============================================================================
+  # ELASTICSEARCH CONFIGURATION
+  # ============================================================================
+  elasticsearch:
+    uris: ${ES_URIS:http://localhost:9200}
+    username: ${ES_USERNAME:}
+    password: ${ES_PASSWORD:}
+    connection-timeout: 10s
+    socket-timeout: 30s
+    
+  data:
+    elasticsearch:
+      repositories:
+        enabled: ${ES_REPOSITORIES_ENABLED:false}
+
+  # ============================================================================
+  # CACHE CONFIGURATION
+  # ============================================================================
+  cache:
+    type: ${CACHE_TYPE:simple}  # simple, redis, caffeine
+    cache-names:
+      - categories
+      - topics
+      - tags
+      - users
+
+  # ============================================================================
+  # SERVLET / MULTIPART
+  # ============================================================================
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${MAX_FILE_SIZE:10MB}
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
+      file-size-threshold: 2KB
+
+  # ============================================================================
+  # JACKSON (JSON)
+  # ============================================================================
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    time-zone: UTC
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
+
+  # ============================================================================
+  # DEVTOOLS (Auto-enabled in development)
+  # ============================================================================
+  devtools:
+    restart:
+      enabled: ${DEVTOOLS_ENABLED:true}
+    livereload:
+      enabled: ${DEVTOOLS_ENABLED:true}
+
+# ============================================================================
+# ACTUATOR CONFIGURATION
+# ============================================================================
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: ${ACTUATOR_HEALTH_DETAILS:when-authorized}
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# ============================================================================
+# LOGGING CONFIGURATION
+# ============================================================================
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.mediaapp: ${LOG_LEVEL_APP:INFO}
+    org.springframework.web: ${LOG_LEVEL_SPRING_WEB:INFO}
+    org.springframework.data: ${LOG_LEVEL_SPRING_DATA:INFO}
+    org.hibernate: ${LOG_LEVEL_HIBERNATE:WARN}
+    org.hibernate.SQL: ${LOG_LEVEL_HIBERNATE_SQL:WARN}
+    org.hibernate.type.descriptor.sql.BasicBinder: ${LOG_LEVEL_HIBERNATE_BINDER:WARN}
+    org.flywaydb: ${LOG_LEVEL_FLYWAY:INFO}
+    org.elasticsearch: ${LOG_LEVEL_ELASTICSEARCH:WARN}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE_NAME:logs/media-app.log}
+
+# ============================================================================
+# SPRINGDOC / SWAGGER CONFIGURATION
+# ============================================================================
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: ${SWAGGER_ENABLED:true}
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: ${SWAGGER_ENABLED:true}
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+    doc-expansion: none
+  show-actuator: false
+
+# ============================================================================
+# APPLICATION CUSTOM PROPERTIES
+# ============================================================================
+app:
+  # Elasticsearch Sync Configuration
+  sync:
+    enabled: ${SYNC_ENABLED:true}
+    batch-size: ${SYNC_BATCH_SIZE:500}
+    cron: ${SYNC_CRON:0 * * * * ?}  # Every minute
+    
+  # Search Configuration
+  search:
+    default-mode: ${SEARCH_MODE:ES_FIRST}  # ES_FIRST, PG_ONLY, HYBRID
+    es-timeout-ms: ${SEARCH_ES_TIMEOUT:3000}
+    pg-fallback-enabled: ${SEARCH_PG_FALLBACK:true}
+    
+  # Security
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change-this-secret-in-production}
+      expiration: ${JWT_EXPIRATION:86400000}  # 24 hours in milliseconds
+      
+  # File Upload
+  upload:
+    base-path: ${UPLOAD_PATH:./uploads}
+    allowed-extensions: ${UPLOAD_ALLOWED_EXTENSIONS:jpg,jpeg,png,gif,pdf,doc,docx}
+    max-size-mb: ${UPLOAD_MAX_SIZE_MB:10}
